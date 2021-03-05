@@ -157,4 +157,48 @@ describe('config-js tests', () => {
         expect.assertions(4)
 
     });
+
+    it('should get value by chain', function () {
+        const configs = {
+            name: 'a',
+            child: {
+                name: 'a child',
+                child: {
+                    name() {
+                        expect(1).toBe(1);
+                        return this.$parent.name + ' child';
+                    },
+                    child: {
+                        level2Name: ({$root}) => {
+                            expect(1).toBe(1);
+                            return $root['child.name'];
+                        },
+                        name() {
+                            expect(1).toBe(1);
+                            return this.$parent.name + ' child';
+                        }
+                    }
+                }
+            }
+        };
+
+        const parsedConfig = configure(configs, {}, {cacheable: true});
+
+        expect(parsedConfig['child.name']).toBe('a child');
+        expect(parsedConfig['child.child.name']).toBe('a child child');
+        expect(parsedConfig['child.child.child.level2Name']).toBe('a child');
+        expect(parsedConfig.$get('child.child.child.level2Name')).toBe('a child');
+        expect(parsedConfig['child.child.child.name']).toBe('a child child child');
+
+        expect.assertions(3 + 5);
+    });
+
+    it('should can\'t set property', function () {
+        const configs = {a: 100};
+        const parsedConfig = configure(configs, {}, {cacheable: true});
+
+        parsedConfig.a = 101;
+
+        expect(parsedConfig.a).toBe(100);
+    });
 });

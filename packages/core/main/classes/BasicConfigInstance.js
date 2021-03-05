@@ -1,14 +1,22 @@
 import {hasEnumerableProperty, isBasicDateType} from "../utils";
-import handler from "../proxy/handler";
+import BasicProxyGenerator from "../proxy/BasicProxyGenerator";
 
-export const defaultOptions = {
-    cacheable: true
+const DEFAULT_OPTIONS = {
+    cacheable: true,
+    proxyHandler: new BasicProxyGenerator().generate()
 };
+
+export const defaultOptions = {...DEFAULT_OPTIONS};
+
+export const TYPE_LOCAL_PROVIDER = 'localProvider';
+export const TYPE_ORIGIN = 'origin';
+export const TYPE_PROVIDER = 'provider';
 
 export default class BasicConfigInstance {
 
     constructor(origin, provider, options = {}) {
-        const {cacheable} = Object.assign({}, defaultOptions, options);
+        const {cacheable, proxyHandler} = this.options = Object.assign({}, DEFAULT_OPTIONS, options);
+        this.proxyHandler = proxyHandler;
         this.cacheable = cacheable;
         this.provider = provider;
         this.origin = origin;
@@ -18,9 +26,6 @@ export default class BasicConfigInstance {
     get localProvider() {
         const instance = this;
         return {
-            get $instance() {
-                return instance;
-            },
             get $root() {
                 return instance.root;
             },
@@ -29,13 +34,20 @@ export default class BasicConfigInstance {
             },
             get $parent() {
                 return instance.parentInstance.proxy
+            },
+            get $get() {
+                return instance.get.bind(instance);
             }
         }
     }
 
+    get originField() {
+        return TYPE_ORIGIN;
+    }
+
     getFrom(type = '', property) {
-        if (!['localProvider', 'provider', 'origin'].includes(type)) {
-            type = 'origin';
+        if (![TYPE_LOCAL_PROVIDER, TYPE_PROVIDER, TYPE_ORIGIN].includes(type)) {
+            type = TYPE_ORIGIN;
         }
         const provider = this[type];
         const descriptor = Object.getOwnPropertyDescriptor(provider, property);
@@ -50,12 +62,12 @@ export default class BasicConfigInstance {
     getRealValue(property) {
         const localProvider = this.localProvider;
         if (hasEnumerableProperty(localProvider, property)) {
-            return this.getFrom('localProvider', property);
+            return this.getFrom(TYPE_LOCAL_PROVIDER, property);
         }
         if (hasEnumerableProperty(this.provider, property)) {
-            return this.getFrom('provider', property);
+            return this.getFrom(TYPE_PROVIDER, property);
         }
-        return this.getFrom('origin', property);
+        return this.getFrom(TYPE_ORIGIN, property);
     }
 
     getParameterProxy() {
@@ -67,9 +79,10 @@ export default class BasicConfigInstance {
         const realValue = this.getRealValue(property);
         const {enumerable, value} = realValue;
         if (!enumerable || typeof value !== 'function') {
-            return value;
+            return realValue;
         }
-        return value.call(proxy, proxy);
+        realValue.value = value.call(proxy, proxy);
+        return realValue
     }
 
     applyParent(
@@ -97,20 +110,50 @@ export default class BasicConfigInstance {
         this.cache[property] = value;
     }
 
+    getByChain(propertyChain) {
+        if (typeof propertyChain === 'string') {
+            propertyChain = propertyChain.split('.');
+        }
+        if (!Array.isArray(propertyChain)) {
+            return this.get(propertyChain);
+        }
+        if (propertyChain.length === 0) {
+            return undefined;
+        }
+        propertyChain = [...propertyChain];
+        let tempResult = this.generateProxy();
+        for (let property of propertyChain) {
+            property = property.trim();
+            tempResult = tempResult[property];
+            if (tempResult == null) {
+                return tempResult;
+            }
+        }
+        return tempResult;
+    }
+
     get(property) {
+
+        if (Array.isArray(property)) {
+            return this.getByChain(property);
+        }
 
         if (this.cacheable && this.hasCachedValue(property)) {
             return this.getCachedValue(property);
         }
 
-        let returnValue = this.getComputedValue(property);
+        const computedValue = this.getComputedValue(property);
+
+        let returnValue = computedValue.value;
+
+        if (computedValue.type === TYPE_LOCAL_PROVIDER) {
+            return returnValue;
+        }
 
         if (!isBasicDateType(returnValue)) {
-            returnValue = (new this.constructor(returnValue, this.provider))
-                .generateProxy({
-                    instance: this,
-                    property
-                });
+            returnValue = this.buildProxyForChildProperty(property, returnValue);
+        } else if (returnValue === undefined && typeof property === 'string' && property.indexOf('.') >= 0) {
+            return this.getByChain(property);
         }
 
         this.cacheable && this.putCachedValue(property, returnValue);
@@ -119,12 +162,20 @@ export default class BasicConfigInstance {
 
     }
 
+    buildProxyForChildProperty(property, childOrigin) {
+        return (new this.constructor(childOrigin, this.provider, this.options))
+            .generateProxy({
+                instance: this,
+                property
+            });
+    }
+
     generateProxy(parent) {
         if (parent) {
             this.applyParent(parent);
         }
         if (!this.proxy) {
-            this.proxy = new Proxy(this, handler);
+            this.proxy = new Proxy(this, this.proxyHandler);
         }
         this.root = this.root || this.proxy;
         return this.proxy;
