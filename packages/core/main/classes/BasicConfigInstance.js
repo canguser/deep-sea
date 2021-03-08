@@ -110,7 +110,7 @@ export default class BasicConfigInstance {
     parseTemplateValue(str) {
         str = str + '';
         return str.replace(
-            new RegExp('\{\!([^{}!]+)\}', 'g'),
+            new RegExp('{!([^{}!]+)}', 'g'),
             (match, property) => {
                 const parsedValue = this.get(property);
                 return parsedValue == null ? '' : parsedValue;

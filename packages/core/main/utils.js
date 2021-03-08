@@ -1,3 +1,11 @@
+/**
+ * @Deep-Sea
+ * @Author Cangshi
+ * @See @link{https://github.com/canguser/deep-sea}
+ * @Licence MIT
+ */
+
+
 export function hasEnumerableProperty(target, p) {
     const descriptor = Object.getOwnPropertyDescriptor(target, p);
     return descriptor && descriptor.enumerable;
