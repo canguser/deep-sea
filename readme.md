@@ -109,7 +109,7 @@ function doSomething(options){
 
 > 使用 `npm` 或 `yarn` 引入核心模块依赖：`@deep-sea/core`
 
-### Live Demo
+### [Live Demo](https://runkit.com/canguser/602f5af66c5fc2001babc02e)
 
 ```javascript
 function demo(expect) {
