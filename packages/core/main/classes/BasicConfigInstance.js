@@ -33,7 +33,7 @@ export default class BasicConfigInstance {
                 return instance.ownedProperty
             },
             get $parent() {
-                return instance.parentInstance.proxy
+                return instance.parentInstance ? instance.parentInstance.proxy : undefined
             },
             get $get() {
                 return instance.get.bind(instance);
@@ -43,6 +43,22 @@ export default class BasicConfigInstance {
 
     get originField() {
         return TYPE_ORIGIN;
+    }
+
+    getOwnPropertyDescriptor(property) {
+        const value = this.get(property);
+        return {
+            configurable: true,
+            enumerable: true,
+            value: value,
+            writable: false
+        }
+    }
+
+    ownKeys() {
+        return Reflect.ownKeys(this.origin).concat(Reflect.ownKeys(this.provider)).concat(
+            ['$property', '$root', '$parent', '$get']
+        )
     }
 
     getFrom(type = '', property) {

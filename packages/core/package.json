@@ -1,6 +1,6 @@
 {
   "name": "@deep-sea/core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "the core package of func-js",
   "main": "dist/deep-sea.core.js",
   "mainMini": "dist/deep-sea.core.mini.js",

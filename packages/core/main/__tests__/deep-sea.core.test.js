@@ -2,6 +2,105 @@ import {configure} from "../index";
 
 describe('config-js tests', () => {
 
+    it('should success running demo', function () {
+
+        function demo(expect) {
+
+            // 模拟表格配置（列）
+            const tableConfig = {
+                columns: [
+                    {
+                        label: '名字',
+                        cell: {
+                            output: ({lastName, firstName}) => lastName + firstName
+                        }
+                    },
+                    {
+                        label: '性别',
+                        cell: {
+                            output({MALE, FEMALE}) {
+                                if (this.gender === MALE) {
+                                    return '男'
+                                }
+                                if (this.gender === FEMALE) {
+                                    return '女'
+                                }
+                                return '未知'
+                            }
+                        }
+                    },
+                    {
+                        label: '籍贯',
+                        cell: {
+                            output: ({local, $root, $get}) => $get('local.province') + local.$get('city') + $root['local.county']
+                        }
+                    }
+                ]
+            };
+
+            function applyTable(config) {
+                // 展示个人信息（行）
+                const rows = [
+                    {
+                        firstName: '三',
+                        lastName: '张',
+                        gender: 0,
+                        local: {
+                            city: '成都',
+                            province: '四川',
+                            county: '高新'
+                        }
+                    },
+                    {
+                        firstName: '思',
+                        lastName: '李',
+                        gender: 1,
+                        local: {
+                            city: '成都',
+                            province: '四川',
+                            county: '华阳'
+                        }
+                    }
+                ];
+
+                return configure(
+                    rows.map(row => config.columns.map(column => configure(column, {...row, MALE: 0, FEMALE: 1})))
+                );
+            }
+
+            const tableResult = applyTable(tableConfig);
+
+            expect(tableResult.$get('0.0.label')).toBe('名字');
+            expect(tableResult.$get('0.1.label')).toBe('性别');
+            expect(tableResult.$get('0.2.label')).toBe('籍贯');
+
+            expect(tableResult.$get('1.0.label')).toBe('名字');
+            expect(tableResult.$get('1.1.label')).toBe('性别');
+            expect(tableResult.$get('1.2.label')).toBe('籍贯');
+
+            expect(tableResult.$get('0.0.cell.output')).toBe('张三');
+            expect(tableResult.$get('0.1.cell.output')).toBe('男');
+            expect(tableResult.$get('0.2.cell.output')).toBe('四川成都高新');
+
+            expect(tableResult.$get('1.0.cell.output')).toBe('李思');
+            expect(tableResult.$get('1.1.cell.output')).toBe('女');
+            expect(tableResult.$get('1.2.cell.output')).toBe('四川成都华阳');
+
+        }
+
+        demo(expect);
+
+        demo(
+            expect => {
+                return {
+                    toBe(actual) {
+                        console.assert(expect, actual)
+                    }
+                }
+            }
+        )
+    });
+
     it('should parse normal config object', function () {
         const config = {
             age: 10,
@@ -239,18 +338,19 @@ describe('config-js tests', () => {
 
     it('should using string template', function () {
         const configs = {
-            host: '192.168.0.1',
-            port: '8080',
             path: '/test',
             URI: 'https://{!host}:{!port}{!path}',
-            service:{
+            service: {
                 path: '/service',
                 rootURI: '{!$root.URI}'
             },
             serviceURI: 'https://{!host}:{!port}{!service.path}'
         };
 
-        const parsedConfig = configure(configs, {});
+        const parsedConfig = configure(configs, {
+            host: '192.168.0.1',
+            port: '8080',
+        });
 
         expect(parsedConfig.URI).toBe('https://192.168.0.1:8080/test');
         expect(parsedConfig.serviceURI).toBe('https://192.168.0.1:8080/service');
