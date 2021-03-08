@@ -78,11 +78,28 @@ export default class BasicConfigInstance {
         const proxy = this.getParameterProxy();
         const realValue = this.getRealValue(property);
         const {enumerable, value} = realValue;
-        if (!enumerable || typeof value !== 'function') {
+        if (!enumerable) {
+            return realValue;
+        }
+        if (typeof value === 'string') {
+            realValue.value = this.parseTemplateValue(value);
+            return realValue;
+        } else if (typeof value !== 'function') {
             return realValue;
         }
         realValue.value = value.call(proxy, proxy);
         return realValue
+    }
+
+    parseTemplateValue(str) {
+        str = str + '';
+        return str.replace(
+            new RegExp('\{\!([^{}!]+)\}', 'g'),
+            (match, property) => {
+                const parsedValue = this.get(property);
+                return parsedValue == null ? '' : parsedValue;
+            }
+        ).replace('\\!', '!').replace('\\}', '}').replace('\\{', '{');
     }
 
     applyParent(

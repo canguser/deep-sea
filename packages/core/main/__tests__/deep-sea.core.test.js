@@ -193,6 +193,41 @@ describe('config-js tests', () => {
         expect.assertions(3 + 5);
     });
 
+    it('should get $root / $parent value by chain', function () {
+        const configs = {
+            name: 'a',
+            child: {
+                name: 'a child',
+                child: {
+                    name() {
+                        expect(1).toBe(1);
+                        return this.$parent.name + ' child';
+                    },
+                    child: {
+                        level2Name: ({$root}) => {
+                            expect(1).toBe(1);
+                            return $root['child.$parent.child.name'];
+                        },
+                        name() {
+                            expect(1).toBe(1);
+                            return this.$parent.name + ' child';
+                        }
+                    }
+                }
+            }
+        };
+
+        const parsedConfig = configure(configs, {}, {cacheable: true});
+
+        expect(parsedConfig['$root.child.name']).toBe('a child');
+        expect(parsedConfig['child.child.name']).toBe('a child child');
+        expect(parsedConfig['child.child.$parent.child.child.level2Name']).toBe('a child');
+        expect(parsedConfig.$get('child.child.$parent.child.child.level2Name')).toBe('a child');
+        expect(parsedConfig['child.child.child.name']).toBe('a child child child');
+
+        expect.assertions(3 + 5);
+    });
+
     it('should can\'t set property', function () {
         const configs = {a: 100};
         const parsedConfig = configure(configs, {}, {cacheable: true});
@@ -200,5 +235,26 @@ describe('config-js tests', () => {
         parsedConfig.a = 101;
 
         expect(parsedConfig.a).toBe(100);
+    });
+
+    it('should using string template', function () {
+        const configs = {
+            host: '192.168.0.1',
+            port: '8080',
+            path: '/test',
+            URI: 'https://{!host}:{!port}{!path}',
+            service:{
+                path: '/service',
+                rootURI: '{!$root.URI}'
+            },
+            serviceURI: 'https://{!host}:{!port}{!service.path}'
+        };
+
+        const parsedConfig = configure(configs, {});
+
+        expect(parsedConfig.URI).toBe('https://192.168.0.1:8080/test');
+        expect(parsedConfig.serviceURI).toBe('https://192.168.0.1:8080/service');
+        expect(parsedConfig.service.rootURI).toBe('https://192.168.0.1:8080/test');
+
     });
 });
