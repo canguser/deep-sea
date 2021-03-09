@@ -94,7 +94,7 @@ describe('config-js tests', () => {
             expect => {
                 return {
                     toBe(actual) {
-                        console.assert(expect, actual)
+                        console.assert(expect === actual, 'Assertion Failed', expect, actual)
                     }
                 }
             }
