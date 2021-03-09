@@ -7,9 +7,14 @@ interface ConfigProxy {
 
     $get(property: string | symbol | Array<string> | any): ConfigProxy | any,
 
+    $clearCache(property: string | symbol | any): boolean,
+
+    $clearCache(clearAll: boolean): boolean,
+
     readonly $root: ConfigProxy,
     readonly $parent: ConfigProxy,
     readonly $property: string | symbol | any
+
     readonly [key: string]: any
 
 }

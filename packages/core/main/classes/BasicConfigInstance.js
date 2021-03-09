@@ -37,6 +37,9 @@ export default class BasicConfigInstance {
             },
             get $get() {
                 return instance.get.bind(instance);
+            },
+            get $clearCache() {
+                return instance.clearCache.bind(instance);
             }
         }
     }
@@ -47,19 +50,33 @@ export default class BasicConfigInstance {
 
     getOwnPropertyDescriptor(property) {
         const value = this.get(property);
+        let descriptor = Object.getOwnPropertyDescriptor(this.localProvider, property);
+        if (descriptor == null) {
+            descriptor = Object.getOwnPropertyDescriptor(this.provider, property);
+        }
+        if (descriptor == null) {
+            descriptor = Object.getOwnPropertyDescriptor(this.origin, property);
+        } else {
+            // local / provider works
+            descriptor.enumerable = false;
+        }
+        if (descriptor == null) {
+            return descriptor;
+        }
         return {
-            configurable: true,
-            enumerable: true,
             value: value,
-            writable: false
+            writable: false,
+            configurable: true,
+            enumerable: descriptor.enumerable
         }
     }
 
     ownKeys() {
-        return Reflect.ownKeys(this.origin).concat(Reflect.ownKeys(this.provider)).concat(
-            ['$property', '$root', '$parent', '$get']
-        )
+        return Reflect.ownKeys(this.origin)
+            .concat(Reflect.ownKeys(this.provider))
+            .concat(Object.keys(this.localProvider))
     }
+
 
     getFrom(type = '', property) {
         if (![TYPE_LOCAL_PROVIDER, TYPE_PROVIDER, TYPE_ORIGIN].includes(type)) {
@@ -91,18 +108,40 @@ export default class BasicConfigInstance {
     }
 
     getComputedValue(property) {
-        const proxy = this.getParameterProxy();
         const realValue = this.getRealValue(property);
         const {enumerable, value} = realValue;
+
         if (!enumerable) {
+            // un-enumerable value always means property or method from prototype
             return realValue;
         }
+
+        if (typeof value === 'object') {
+            // child object will convert to config instance, need to cache
+            realValue.needCache = true;
+            return realValue;
+        }
+
         if (typeof value === 'string') {
-            realValue.value = this.parseTemplateValue(value);
-            return realValue;
-        } else if (typeof value !== 'function') {
+            // parsed template
+            const matchedParts = value.match(new RegExp('{!([^{}!]+)}', 'g'));
+            if (matchedParts && matchedParts.length > 0) {
+                // realValue.needCache = true;
+                realValue.value = this.parseTemplateValue(value);
+                return realValue;
+            }
+            // none-template string just returned
             return realValue;
         }
+
+        if (typeof value !== 'function') {
+            // return the value doesn't need computing
+            return realValue;
+        }
+
+        // parse function
+        const proxy = this.getParameterProxy();
+        realValue.needCache = true;
         realValue.value = value.call(proxy, proxy);
         return realValue
     }
@@ -141,6 +180,19 @@ export default class BasicConfigInstance {
 
     putCachedValue(property, value) {
         this.cache[property] = value;
+    }
+
+    clearCache(key) {
+        if (!key) {
+            return false;
+        }
+        if (key === true) {
+            this.cache = {};
+            return true;
+        }
+        this.cache[key] = undefined;
+        delete this.cache[key];
+        return true;
     }
 
     getByChain(propertyChain) {
@@ -189,7 +241,9 @@ export default class BasicConfigInstance {
             return this.getByChain(property);
         }
 
-        this.cacheable && this.putCachedValue(property, returnValue);
+        if (this.cacheable && computedValue.needCache) {
+            this.putCachedValue(property, returnValue);
+        }
 
         return returnValue;
 
