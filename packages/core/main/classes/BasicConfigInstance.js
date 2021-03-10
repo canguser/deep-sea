@@ -6,7 +6,7 @@ const DEFAULT_OPTIONS = {
     proxyHandler: new BasicProxyGenerator().generate()
 };
 
-export const defaultOptions = {...DEFAULT_OPTIONS};
+export const GLOBAL_OPTIONS = new Proxy(DEFAULT_OPTIONS, {set: () => true});
 
 export const TYPE_LOCAL_PROVIDER = 'localProvider';
 export const TYPE_ORIGIN = 'origin';

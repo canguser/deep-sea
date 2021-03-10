@@ -5,3 +5,4 @@ export function configure(config, provider = {}, options = {}) {
 }
 
 export * from "./classes/BasicConfigInstance";
+export * from "./plugins/BasicPlugin";

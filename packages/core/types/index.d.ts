@@ -24,7 +24,7 @@ interface ParentConfig {
     readonly property: string | symbol | any
 }
 
-export const defaultOptions: ConfigInstanceOptions;
+export const GLOBAL_OPTIONS: ConfigInstanceOptions;
 
 export class BasicConfigInstance {
 
