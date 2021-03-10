@@ -217,7 +217,7 @@ export default class BasicConfigInstance {
         return tempResult;
     }
 
-    get(property) {
+    get(property, defaultValue = undefined) {
 
         if (Array.isArray(property)) {
             return this.getByChain(property);
@@ -231,18 +231,24 @@ export default class BasicConfigInstance {
 
         let returnValue = computedValue.value;
 
-        if (computedValue.type === TYPE_LOCAL_PROVIDER) {
-            return returnValue;
-        }
+        const isChain = returnValue === undefined && typeof property === 'string' && property.indexOf('.') >= 0;
+
+        const isCachedValue = this.cacheable && computedValue.needCache
+            && ![TYPE_LOCAL_PROVIDER].includes(computedValue.type)
+            && !isChain;
 
         if (!isBasicDateType(returnValue)) {
             returnValue = this.buildProxyForChildProperty(property, returnValue);
-        } else if (returnValue === undefined && typeof property === 'string' && property.indexOf('.') >= 0) {
-            return this.getByChain(property);
+        } else if (isChain) {
+            returnValue = this.getByChain(property);
         }
 
-        if (this.cacheable && computedValue.needCache) {
+        if (isCachedValue) {
             this.putCachedValue(property, returnValue);
+        }
+
+        if (returnValue === undefined) {
+            returnValue = defaultValue;
         }
 
         return returnValue;

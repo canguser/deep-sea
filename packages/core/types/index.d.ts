@@ -5,7 +5,7 @@ interface ConfigInstanceOptions {
 
 interface ConfigProxy {
 
-    $get(property: string | symbol | Array<string> | any): ConfigProxy | any,
+    $get(property: string | symbol | Array<string> | any, defaultValue?: any): ConfigProxy | any,
 
     $clearCache(property: string | symbol | any): boolean,
 
@@ -15,7 +15,7 @@ interface ConfigProxy {
     readonly $parent: ConfigProxy,
     readonly $property: string | symbol | any
 
-    readonly [key: string]: any
+    readonly [property: string]: any
 
 }
 
@@ -30,7 +30,7 @@ export class BasicConfigInstance {
 
     constructor(origin: Object, provider?: Object, options?: ConfigInstanceOptions);
 
-    get(property: string): ConfigProxy | any
+    get(property: string | symbol | Array<string> | any, defaultValue?: any): ConfigProxy | any
 
     generateProxy(parent?: ParentConfig): ConfigProxy
 

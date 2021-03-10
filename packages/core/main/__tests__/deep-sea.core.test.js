@@ -357,4 +357,15 @@ describe('config-js tests', () => {
         expect(parsedConfig.service.rootURI).toBe('https://192.168.0.1:8080/test');
 
     });
+
+    it('should using default value', function () {
+        const configs = {
+            host: '127.0.0.1'
+        }
+
+        const deepSeaConfig = configure(configs);
+
+        expect(deepSeaConfig.$get('port', 8080)).toBe(8080);
+
+    });
 });
