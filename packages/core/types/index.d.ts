@@ -3,7 +3,18 @@ interface ConfigInstanceOptions {
     readonly proxyHandler?: Object
 }
 
-interface ConfigProxy {
+interface InstanceProxy {
+
+    $get(property: string | symbol): InstanceProxy | any,
+
+    readonly $root: InstanceProxy,
+    readonly $parent: InstanceProxy,
+    readonly $property: string | symbol | any
+
+    readonly [property: string]: any
+}
+
+interface ConfigProxy extends InstanceProxy {
 
     $get(property: string | symbol | Array<string> | any, defaultValue?: any): ConfigProxy | any,
 
@@ -13,9 +24,6 @@ interface ConfigProxy {
 
     readonly $root: ConfigProxy,
     readonly $parent: ConfigProxy,
-    readonly $property: string | symbol | any
-
-    readonly [property: string]: any
 
 }
 
@@ -26,15 +34,33 @@ interface ParentConfig {
 
 export const GLOBAL_OPTIONS: ConfigInstanceOptions;
 
-export class BasicConfigInstance {
+export class ProxyInstance {
+
+    constructor(target: Object, handler?: Object);
+
+    get(property: string | symbol): InstanceProxy | any;
+
+    generateProxy(parent?: ParentConfig): ProxyInstance;
+
+    get originField(): string | symbol | any
+
+    get localProvider(): Object;
+
+    getChildInstance(childOrigin: Object): ProxyInstance;
+
+    buildProxyForChildProperty(property: string, childOrigin: Object): ProxyInstance;
+
+    get originTarget(): Object;
+}
+
+
+export class BasicConfigInstance extends ProxyInstance {
 
     constructor(origin: Object, provider?: Object, options?: ConfigInstanceOptions);
 
-    get(property: string | symbol | Array<string> | any, defaultValue?: any): ConfigProxy | any
+    get(property: string | symbol | Array<string> | any): ConfigProxy | any
 
-    generateProxy(parent?: ParentConfig): ConfigProxy
-
-    get originField(): string | symbol | any
+    getByDefault(property: string | symbol | Array<string> | any, defaultValue?: any): ConfigProxy | any
 
 }
 

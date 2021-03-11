@@ -1,5 +1,6 @@
 import {hasEnumerableProperty, isBasicDateType} from "../utils";
 import BasicProxyGenerator from "../proxy/BasicProxyGenerator";
+import ProxyInstance from "../proxy/ProxyInstance";
 
 const DEFAULT_OPTIONS = {
     cacheable: true,
@@ -12,34 +13,26 @@ export const TYPE_LOCAL_PROVIDER = 'localProvider';
 export const TYPE_ORIGIN = 'origin';
 export const TYPE_PROVIDER = 'provider';
 
-export default class BasicConfigInstance {
+export default class BasicConfigInstance extends ProxyInstance {
 
     constructor(origin, provider, options = {}) {
-        const {cacheable, proxyHandler} = this.options = Object.assign({}, DEFAULT_OPTIONS, options);
-        this.proxyHandler = proxyHandler;
+        const {cacheable, proxyHandler} = options = Object.assign({}, DEFAULT_OPTIONS, options)
+        super(origin, proxyHandler);
+        this.options = options;
         this.cacheable = cacheable;
         this.provider = provider;
-        this.origin = origin;
         this.cache = {};
     }
 
     get localProvider() {
         const instance = this;
         return {
-            get $root() {
-                return instance.root;
-            },
-            get $property() {
-                return instance.ownedProperty
-            },
-            get $parent() {
-                return instance.parentInstance ? instance.parentInstance.proxy : undefined
-            },
-            get $get() {
-                return instance.get.bind(instance);
-            },
+            ...super.localProvider,
             get $clearCache() {
                 return instance.clearCache.bind(instance);
+            },
+            get $get() {
+                return instance.getByDefault.bind(instance);
             }
         }
     }
@@ -157,19 +150,6 @@ export default class BasicConfigInstance {
         ).replace('\\!', '!').replace('\\}', '}').replace('\\{', '{');
     }
 
-    applyParent(
-        {
-            instance, property
-        } = {}
-    ) {
-        if (instance && property) {
-            this.parentInstance = instance;
-            this.ownedProperty = property;
-            this.root = instance.root || this;
-        }
-        return this;
-    }
-
     getCachedValue(property) {
         return this.cache[property];
     }
@@ -217,7 +197,11 @@ export default class BasicConfigInstance {
         return tempResult;
     }
 
-    get(property, defaultValue = undefined) {
+    get(property) {
+        return this.getByDefault(property);
+    }
+
+    getByDefault(property, defaultValue = undefined) {
 
         if (Array.isArray(property)) {
             return this.getByChain(property);
@@ -255,23 +239,8 @@ export default class BasicConfigInstance {
 
     }
 
-    buildProxyForChildProperty(property, childOrigin) {
-        return (new this.constructor(childOrigin, this.provider, this.options))
-            .generateProxy({
-                instance: this,
-                property
-            });
-    }
-
-    generateProxy(parent) {
-        if (parent) {
-            this.applyParent(parent);
-        }
-        if (!this.proxy) {
-            this.proxy = new Proxy(this, this.proxyHandler);
-        }
-        this.root = this.root || this.proxy;
-        return this.proxy;
+    getChildInstance(childOrigin) {
+        return new this.constructor(childOrigin, this.provider, this.options);
     }
 
 }

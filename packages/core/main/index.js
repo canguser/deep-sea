@@ -4,5 +4,6 @@ export function configure(config, provider = {}, options = {}) {
     return new BasicConfigInstance(config, provider, options).generateProxy();
 }
 
-export * from "./classes/BasicConfigInstance";
+export * from "./proxy/ProxyInstance";
 export * from "./plugins/BasicPlugin";
+export * from "./classes/BasicConfigInstance";

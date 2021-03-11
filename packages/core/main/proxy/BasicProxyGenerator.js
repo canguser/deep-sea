@@ -6,10 +6,6 @@ export default class BasicProxyGenerator {
         this.template = new ProxyHandlerTemplate();
     }
 
-    getOriginField(target) {
-        return target.originField || 'origin';
-    }
-
     setTemplate(template) {
         this.template = template || {};
         return this;
@@ -32,8 +28,7 @@ export default class BasicProxyGenerator {
                         return templateOrigin(target, ...args);
                     }
                     // set default handler for instance's origin target
-                    const originField = _this.getOriginField(target);
-                    const originTarget = target[originField] || {};
+                    const originTarget = target.originTarget || {};
                     return Reflect[p](originTarget, ...args);
                 }
             }

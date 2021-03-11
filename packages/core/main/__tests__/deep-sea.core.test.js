@@ -365,6 +365,8 @@ describe('config-js tests', () => {
 
         const deepSeaConfig = configure(configs);
 
+        console.log(deepSeaConfig.port);
+
         expect(deepSeaConfig.$get('port', 8080)).toBe(8080);
 
     });
